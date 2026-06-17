@@ -1,0 +1,1251 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "model": "=qwen3.6:27b",
+        "options": {
+          "topK": 20,
+          "numCtx": 16384
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -112
+      ],
+      "id": "f6cf08f3-ba1a-4a43-8c0e-c99ebcaf3a75",
+      "name": "Ollama Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xHuYe0MDGOs9IpBW",
+          "name": "Local Ollama service"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b-instruct-q5_K_M",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        928
+      ],
+      "id": "9c589397-fdc3-4b0d-b7e5-e245bfdc0e37",
+      "name": "Ollama Model1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xHuYe0MDGOs9IpBW",
+          "name": "Local Ollama service"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b-instruct-q5_K_M",
+        "options": {
+          "temperature": 0.4,
+          "topP": 1,
+          "numCtx": 16384
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -112
+      ],
+      "id": "44dd760d-b747-47fc-8bef-91c67b3836bb",
+      "name": "Ollama Model2",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xHuYe0MDGOs9IpBW",
+          "name": "Local Ollama service"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst porId = new Map();\n\nfor (const it of items) {\n    const id = it.json.med_id;\n    if (!id) continue;\n    \n    if (porId.has(id) && it.json.En_Ficha_Tecnica === \"No se encontró ficha técnica\") {\n        continue;\n    }\n    \n    porId.set(id, it);\n}\n\nconst resultados = [...porId.values()];\n\n// Normalizar el nombre de archivo de TODAS las filas a Consolidado\nfor (const r of resultados) {\n    const nombreActual = r.json.nombre_archivo_dinamico || \"\";\n    r.json.nombre_archivo_dinamico = nombreActual\n        .replace(\"_ResultadoFinal\", \"_Consolidado\")\n        .replace(\"_Huerfanos\", \"_Consolidado\");\n}\n\nresultados.sort((a, b) => {\n    const idA = String(a.json.med_id || \"zzz\");\n    const idB = String(b.json.med_id || \"zzz\");\n    return idA.localeCompare(idB, undefined, { numeric: true });\n});\n\nreturn resultados;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        656
+      ],
+      "id": "ca3195b6-9656-4a92-b159-4329624e71e1",
+      "name": "Eliminar Duplicados"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b-instruct-q5_K_M",
+        "options": {
+          "temperature": 0.2,
+          "numPredict": 1024,
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        48,
+        928
+      ],
+      "id": "3f9c61d1-1c02-4384-a383-8ad46f614b99",
+      "name": "Ollama Model3",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xHuYe0MDGOs9IpBW",
+          "name": "Local Ollama service"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un extractor de datos clínicos altamente preciso. Tu única tarea es extraer información explícita de un texto clínico sobre posibles Reacciones Adversas a Medicamentos (RAM), aplicando reglas temporales estrictas. No debes deducir diagnósticos ni alterar los términos médicos usados en el texto.\n\nREGLAS DE VINCULACIÓN Y EXTRACCIÓN:\n1. Temporalidad: El síntoma DEBE haber comenzado DESPUÉS de la toma del medicamento. Si el texto indica que el medicamento fue administrado \"recientemente\", \"antes de la visita\" o cualquier término similar que implique que la administración ocurrió antes del síntoma, asume que la relación temporal es válida.\n2. Consumo habitual: Si el texto indica que el paciente toma un fármaco de forma \"habitual\", \"crónica\" o \"de base\", asume que la toma es anterior a cualquier síntoma agudo y, por tanto, el vínculo temporal es válido.\n3. Fidelidad en Fechas (CRÍTICO): Tu principal prioridad es NO inventar ni calcular fechas. Es preferible que el 90% de las veces escribas \"Desconocido\" antes que deducir un día. Si no hay una fecha exacta, escribe la frase literal (ej. \"hace dos días\") o simplemente \"Desconocido\".\n4. Dechallenge: Identifica explícitamente si se menciona la retirada/suspensión del fármaco y si hubo mejora del síntoma tras la retirada del medicamento.\n5. Exhaustividad histórica: Lee el texto hasta el final. Un paciente puede presentar múltiples eventos o ingresos. Debes extraer TODOS los síntomas o diagnósticos que ocurran después del inicio de cualquier fármaco (incluidos los crónicos), sin importar si hubo altas médicas intermedias. EXCLUYE como sospechoso cualquier fármaco de RESCATE, definido como el que se INICIA DESPUÉS del síntoma para TRATARLO, estos NO son SOSPECHOSOS de causar el evento.\n6. Manejo de Analíticas y Hallazgos Objetivos: IGNORA los valores NUMÉRICOS crudos, tablas de laboratorio o constantes vitales (ej. \"ALT 500 U/L\", \"TA 120/80\"), NUNCA derives síntomas de valores NUMÉRICOS. SIN EMBARGO, SÍ DEBES EXTRAER OBLIGATORIAMENTE cualquier alteración analítica o prueba de imagen cuando el médico la redacte como un DIAGNÓSTICO CLÍNICO textual, concepto médico o signo clínico (ej. \"hipertransaminasemia\", \"leucopenia\", \"insuficiencia renal aguda\", \"infiltrado pulmonar\", \"pico febril de 39.4ºC\").\n\nSALIDA REQUERIDA:\nDevuelve ÚNICA Y EXCLUSIVAMENTE una tabla en formato Markdown con las siguientes columnas. Cada síntoma individual debe ir en una fila separada:\n\n| Medicamento Sospechoso | Síntoma (Literal del texto) | Fecha Inicio Síntoma | Fecha Fin Síntoma | ¿Mejora tras retirada? (Sí/No/Desconocido) |\n\nNo agrupes medicamentos en la misma celda usando comas. Tampoco agrupes síntomas diferentes en la misma fila.\n\nTexto clínico a analizar:\n{{ $json.chatInput }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -48,
+        16
+      ],
+      "id": "c79909c7-e86d-4ce0-b003-77ad6ff9ed53",
+      "name": "Agente Extracción",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un médico especialista en farmacovigilancia y codificador clínico. \n\nA continuación, recibirás una tabla con síntomas crudos asociados a medicamentos sospechosos extraídos de un caso clínico. Tu tarea es analizar los síntomas, normalizar el diagnóstico a un término estándar y agruparlos SÓLO si está clínicamente justificado por el texto. \n\nREGLAS DE AGRUPACIÓN Y NORMALIZACIÓN:\n1. Agrupación clínica condicionada: Agrupa síntomas en un diagnóstico mayor SÓLO si el diagnóstico final está explícito en el texto o si los síntomas son una progresión clínica innegable hacia ese evento  (ej. fatiga y dolor de mandíbula que el texto confirma que acabaron en un infarto agudo de miocardio). PROHIBIDO HACER AGRUPACIONES VAGAS (ej. no agrupes múltiples síntomas inconexos bajo TÉRMINOS GENÉRICOS como \"Alergia\", \"Síndrome inespecífico\" o \"Intolerancia\").\n2. Normalización a Pseudo-MedDRA: El evento principal (o el síntoma individual) DEBE traducirse a un Término Preferido (PT) aproximado del diccionario MedDRA. ES OBLIGATORIO QUE EL TÉRMINO ESTÉ EN ESPAÑOL (ej. usa \"Infarto agudo de miocardio\" y nunca \"Myocardial infarction\").\n3. Conservación de Fármacos: Evalúa cada medicamento por separado. Si hay 3 medicamentos, debes generar 3 objetos independientes.\n4. Fechas: Para la \"fecha_inicio\", usa la fecha del primer síntoma. Para la \"fecha_fin\", la fecha de resolución final. Mantén \"Desconocido\" si así viene en la tabla original.\nExhaustividad (CRÍTICO): En ningún caso puedes OMITIR síntomas PRESENTES en la TABLA. Cada síntoma de la tabla original debe aparecer en \"sintomas_originales_agrupados\" de algún objeto. \n\nSALIDA REQUERIDA:\nDevuelve ÚNICA Y EXCLUSIVAMENTE un array en formato JSON puro. No incluyas texto adicional. Usa esta estructura exacta:\n\n[\n  {\n    \"medicamento_sospechoso\": \"Nombre del fármaco\",\n    \"pseudo_meddra_pt\": \"Término aproximado a MedDRA en español\",\n    \"sintomas_originales_agrupados\": [\"Síntoma 1\", \"Síntoma 2\"],\n    \"fecha_inicio_cuadro\": \"DD/MM/AAAA o Desconocido\",\n    \"fecha_fin_cuadro\": \"DD/MM/AAAA o Desconocido\",\n    \"mejora_tras_retirada\": \"Sí/No/Desconocido\"\n  }\n]\n\n\nTabla de síntomas a analizar:\n{{ $json.text }}\n\nTexto narrativo empleado:\n{{ $('Preparación Texto').item.json.chatInput}}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        272,
+        16
+      ],
+      "id": "f06fea3d-d25b-4e2c-9e8a-879007bc6de3",
+      "name": "Agente Agrupación"
+    },
+    {
+      "parameters": {
+        "jsCode": "// DICCIONARIO DE TRADUCCIÓN CLÍNICA A CIMA\nconst diccionario = {\n    \"dimetilfumarato\": \"fumarato de dimetilo\",\n    \"aas\": \"acido acetilsalicilico\",\n    \"aspirina\": \"acido acetilsalicilico\",\n    \"amoxi-clav\": \"amoxicilina / acido clavulanico\",\n    \"amoxicilina-clavulanico\": \"amoxicilina / acido clavulanico\",\n    \"paracetamol iv\": \"paracetamol\",\n    \"daunorrubicina\": \"daunorubicina\",\n    \"anfotericina b\": \"amfotericina b\",\n    \"citara bina\": \"citarabina\",\n    \"piperacilina / ácido tazobactámico\": \"piperacilina/tazobactam\",\n    \"hierro carboximaltosa\": \"Carboximaltosa férrica\",\n    \"carboximaltosa de hierro\": \"Carboximaltosa férrica\",\n    \"paracetamol / tramadol\": \"tramadol/paracetamol\",\n    \"glicopirrolato\": \"glicopirronio\",\n    \"doxorrubicina\":\"Doxorubicina\",\n};\n\nconst items = $input.all();\n\nreturn items.map(item => {\n    let nombreIA = (item.json.nombre_limpio_cima || \"\").toLowerCase().trim();\n    \n    if (diccionario[nombreIA]) {\n        item.json.nombre_limpio_cima = diccionario[nombreIA];\n    }\n    \n    return item;\n});"
+      },
+      "id": "f88ad882-a8fa-4eee-8f89-cce96980b616",
+      "name": "Diccionario Clínico",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "csv",
+        "options": {}
+      },
+      "id": "b5d67106-52e2-402f-bf12-579bd8621a7f",
+      "name": "Conversión a CSV Intermedios",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        928,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/shared/{{ $('Consolidar Resultados Intermedios').first().json.nombre_archivo_dinamico }}",
+        "options": {}
+      },
+      "id": "a9fb2de8-b4cf-42c1-801f-7304861c8785",
+      "name": "Guardar CSV Intermedios",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "/data/shared/",
+        "events": [
+          "add"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        16
+      ],
+      "id": "68c4c79b-ed1b-44fe-93a3-e305434ea3f2",
+      "name": "Detector Nuevos Casos"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.path }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        16
+      ],
+      "id": "7d90cb3d-8f77-4b9d-83d9-bac65ba3240b",
+      "name": "Cargar Caso"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        16
+      ],
+      "id": "95970eb1-0761-4806-8384-17224dc50b69",
+      "name": "Extractor Texto"
+    },
+    {
+      "parameters": {
+        "jsCode": "const texto = $input.first().json.data;\nreturn [{ json: { chatInput: texto } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        16
+      ],
+      "id": "74ce0b8b-9e1e-401a-ae87-f3cfb544f722",
+      "name": "Preparación Texto"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  let textoCrudo = $input.first().json.text;\n  textoCrudo = textoCrudo.replace(/`{3}json/gi, '').replace(/`{3}/g, '').trim();\n  \n  const inicioArray = textoCrudo.indexOf('[');\n  const finArray = textoCrudo.lastIndexOf(']');\n  \n  if (inicioArray === -1 || finArray === -1) {\n      throw new Error(\"No se detectó una estructura de Array JSON válida.\");\n  }\n  \n  const jsonLimpio = textoCrudo.substring(inicioArray, finArray + 1);\n  const datosParseados = JSON.parse(jsonLimpio);\n  \n  // Inyectar _id en cada item\n  return datosParseados.map((item, i) => ({\n    json: { ...item, med_id: `med_${i}` },\n    pairedItem: { item: 0 }\n  }));\n  \n} catch (error) {\n  return [{\n    json: {\n      error: \"Fallo al extraer el JSON\",\n      detalle: error.message,\n      texto_crudo: $input.first().json.output\n    }\n  }];\n}"
+      },
+      "id": "d72f8d5d-61b5-46e0-893c-13f3f42094ff",
+      "name": "Estructurador de Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst parseoItems = $('Estructurador de Datos').all();\nconst resultados = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  // Recuperar datos clínicos del Parseo original por índice\n  const datosClinicos = parseoItems[i]?.json || {};\n\n  try {\n    let textoCrudo = item.json.output || \"\";\n    textoCrudo = textoCrudo.replace(new RegExp('`{3}json', 'gi'), '').replace(new RegExp('`{3}', 'g'), '').trim();\n    \n    const matches = textoCrudo.match(/\\{[\\s\\S]*?\\}/g);\n    if (!matches) throw new Error(\"No JSON found\");\n    \n    const ultimoJsonStr = matches[matches.length - 1];\n    const datosParseados = JSON.parse(ultimoJsonStr);\n    \n    resultados.push({ \n      json: { \n        ...datosClinicos,   // datos clínicos originales del Parseo\n        ...item.json,       // lo que llega del agente (output)\n        ...datosParseados   // nombre_limpio_cima, via_administracion_pista\n      } \n    });\n    \n  } catch (error) {\n    resultados.push({\n      json: {\n        ...datosClinicos,\n        ...item.json,\n        nombre_limpio_cima: datosClinicos.medicamento_sospechoso || item.json.medicamento_sospechoso,\n        via_administracion_pista: \"Sistemica\"\n      }\n    });\n  }\n}\n\nreturn resultados;"
+      },
+      "id": "5356d6a7-3ecb-47bc-a2ba-1058d51afd6a",
+      "name": "Estructurador Datos Medicamentos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://cima.aemps.es/cima/rest/medicamentos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "nombre",
+              "value": "={{ $('Diccionario Clínico').item.json.nombre_limpio_cima }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "cima_search_data"
+            }
+          }
+        }
+      },
+      "id": "3de036b3-fcb7-48d0-8597-99ccb3604eba",
+      "name": "Búsqueda en CIMA por Nombre Comercial",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -576,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "condicion-unica-definitiva",
+              "leftValue": "={{ (function(){\n   const txt = $json.cima_search_data || \"\";\n   if (!txt.match(/\"totalFilas\":\\s*[1-9]/)) return 0;\n   \n   const pista = ($json.via_administracion_pista || \"\").toLowerCase();\n   if (/pomada|crema|colirio|gel/.test(pista)) {\n      const palabraClave = pista.match(/pomada|crema|colirio|gel/)[0];\n      if (!txt.toLowerCase().includes(palabraClave)) return 0;\n   }\n   return 1;\n})() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "larger"
+              }
+            },
+            {
+              "id": "bba465c2-8a3f-4e94-80cb-6accea34ba4f",
+              "leftValue": "={{ (function(){const t=$json.cima_search_data||\"\";if(!/\"totalFilas\":\\s*[1-9]/.test(t))return 0;const n=($('Diccionario Clínico').item.json.nombre_limpio_cima||\"\").toString().trim().toUpperCase();if(!n)return 0;const m=t.match(/\"nombre\":\"([^\"]+)\"/);if(!m)return 0;const nombreCima=m[1].toUpperCase();if(nombreCima.indexOf(n)!==0)return 0;const sig=nombreCima.charAt(n.length);if(sig&&!/[\\s0-9,.]/.test(sig))return 0;const p=($('Diccionario Clínico').item.json.via_administracion_pista||\"\").toString().toLowerCase();if(!p)return 1;const tt=t.toLowerCase();if(/colirio|oft/.test(p))return /oft[aá]lmic|colirio/.test(tt)?1:0;if(/[oó]tic|auricular/.test(p))return /[oó]tic|auricular/.test(tt)?1:0;if(/nasal/.test(p))return /nasal/.test(tt)?1:0;if(/inhalat|nebuli/.test(p))return /inhalat|nebuli|respiratori/.test(tt)?1:0;if(/t[oó]pic|cut[aá]ne|pomada|crema|gel|emulsi|loci|espuma|ung/.test(p))return /cut[aá]neo|t[oó]pic|pomada|crema|gel|emulsi|loci|espuma|ung/.test(tt)?1:0;if(/vaginal|[oó]vulo/.test(p))return /vaginal/.test(tt)?1:0;if(/rectal|supositorio/.test(p))return /rectal|supositorio/.test(tt)?1:0;if(/intravenos|i\\.?v\\.?|intramuscular|subcut|perfusi|inyectable|parenteral/.test(p))return /intravenos|intramuscular|subcut[aá]nea|perfusi[oó]n|inyectable|parenteral/.test(tt)?1:0;if(/oral|comprimido|c[aá]psula|granulad|jarabe|suspensi|sublingual|bucal/.test(p))return /v[ií]a oral|oral|sublingual|bucal/.test(tt)?1:0;return 1;})() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -416,
+        240
+      ],
+      "id": "32c29644-178f-4b13-b5ea-9700eb9307b0",
+      "name": "¿Encontrado en CIMA? (búsqueda 1)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "condicion-unica-definitiva",
+              "leftValue": "={{ (function(){\n   const txt = $json.cima_search_data || \"\";\n   if (!txt.match(/\"totalFilas\":\\s*[1-9]/)) return 0;\n   \n   const pista = ($json.via_administracion_pista || \"\").toLowerCase();\n   if (/pomada|crema|colirio|gel/.test(pista)) {\n      const palabraClave = pista.match(/pomada|crema|colirio|gel/)[0];\n      if (!txt.toLowerCase().includes(palabraClave)) return 0;\n   }\n   return 1;\n})() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "larger"
+              }
+            },
+            {
+              "id": "bba465c2-8a3f-4e94-80cb-6accea34ba4f",
+              "leftValue": "={{ (function(){const t=$json.cima_search_data||\"\";return /\"totalFilas\":\\s*[1-9]/.test(t)?1:0;})() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -48,
+        320
+      ],
+      "id": "8c6f6590-318f-42ca-9f59-a216481f39ce",
+      "name": "¿Encontrado en CIMA? (búsqueda 2)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "condicion-unica-definitiva",
+              "leftValue": "={{ (function(){\n   const txt = $json.cima_search_data || \"\";\n   if (!txt.match(/\"totalFilas\":\\s*[1-9]/)) return 0;\n   \n   const pista = ($json.via_administracion_pista || \"\").toLowerCase();\n   if (/pomada|crema|colirio|gel/.test(pista)) {\n      const palabraClave = pista.match(/pomada|crema|colirio|gel/)[0];\n      if (!txt.toLowerCase().includes(palabraClave)) return 0;\n   }\n   return 1;\n})() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "larger"
+              }
+            },
+            {
+              "id": "bba465c2-8a3f-4e94-80cb-6accea34ba4f",
+              "leftValue": "={{ (function(){const t=$json.cima_search_data||\"\";return /\"totalFilas\":\\s*[1-9]/.test(t)?1:0;})() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        416
+      ],
+      "id": "905f0f9c-7bf0-4cfa-b2e1-141ec5abc15d",
+      "name": "¿Encontrado en CIMA? (búsqueda 3)"
+    },
+    {
+      "parameters": {
+        "url": "https://cima.aemps.es/cima/rest/medicamentos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "practiv1",
+              "value": "={{ $('Diccionario Clínico').item.json.nombre_limpio_cima }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "cima_search_data"
+            }
+          }
+        }
+      },
+      "id": "2ea17a32-839f-44cc-8bf5-0c6c1fcaea72",
+      "name": "Búsqueda en CIMA por Principio Activo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://cima.aemps.es/cima/rest/medicamentos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "nombre",
+              "value": "={{ $('Diccionario Clínico').item.json.nombre_limpio_cima }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "cima_search_data"
+            }
+          }
+        }
+      },
+      "id": "f13986cf-70db-4b0d-b932-9007ee2ed401",
+      "name": "Búsqueda en CIMA por Nombre Comercial 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        688,
+        368
+      ],
+      "id": "69019e3b-e894-4926-8829-aa1a395743b5",
+      "name": "Consolidar Búsqueda CIMA"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================\n// Selección de medicamento CIMA por vía/forma farmacéutica\n// =============================================================\n\nconst items = $input.all();\nconst resultados = [];\n\n// --- 1) Obtener pista IA de forma robusta ---\n// Va al nodo origen para evitar pérdidas en los HTTP intermedios\nfunction obtenerPista(itemData) {\n  let pista = '';\n  try {\n    pista = $('Diccionario Clínico').item.json.via_administracion_pista || '';\n  } catch (e) {\n    pista = itemData.via_administracion_pista || '';\n  }\n  return String(pista).toLowerCase().trim();\n}\n\n// --- 2) Categorizar pista (más específico primero) ---\nfunction categorizarPista(pista) {\n  if (!pista) return null;\n  if (/colirio|oft[aá]lmic[oa]/.test(pista))                                                  return 'oftalmica';\n  if (/[oó]tic[oa]|auricular|gotas?\\s*o[ií]do/.test(pista))                                   return 'otica';\n  if (/nasal/.test(pista))                                                                    return 'nasal';\n  if (/inhalat|inhalad|nebuli/.test(pista))                                                   return 'inhalatoria';\n  if (/intravenos|i\\.?v\\.?|perfusi[oó]n|inyectable|subcut[aá]nea/.test(pista))                return 'parenteral';\n  if (/t[oó]pic[oa]|cut[aá]ne[oa]|pomada|crema|gel|emulsi[oó]n|loci[oó]n|espuma|ung[uü]ento/.test(pista)) return 'topica';\n  if (/vaginal|[oó]vulo/.test(pista))                                                         return 'vaginal';\n  if (/rectal|supositorio/.test(pista))                                                       return 'rectal';\n  if (/oral|comprimido|c[aá]psula|granulad|jarabe|suspensi[oó]n|sublingual|bucal/.test(pista)) return 'oral';\n  return null;\n}\n\n// --- 3) ¿Coincide el medicamento con la categoría requerida? ---\n// IMPORTANTE: usa SIEMPRE viasAdministracion + formaFarmaceutica de CIMA,\n// nunca el nombre comercial (Daivobet contiene \"bet\" pero no es betametasona oral).\nfunction coincideCategoria(med, categoria) {\n  const vias  = (med.viasAdministracion || []).map(v => (v.nombre || '').toLowerCase()).join(' | ');\n  const forma = (med.formaFarmaceutica?.nombre || '').toLowerCase();\n  const info  = `${vias} || ${forma}`;\n\n  switch (categoria) {\n    case 'topica':       return /cut[aá]neo|t[oó]pic[oa]|pomada|crema|gel|emulsi[oó]n|loci[oó]n|espuma|ung[uü]ento/.test(info);\n    case 'oftalmica':    return /oft[aá]lmic[oa]|colirio|conjuntival/.test(info);\n    case 'otica':        return /[oó]tic[oa]|auricular/.test(info);\n    case 'nasal':        return /nasal/.test(info);\n    case 'inhalatoria':  return /inhalat|nebuli|respiratori/.test(info);\n    case 'parenteral':   return /intravenos|perfusi[oó]n|inyectable|intramuscular|subcut[aá]nea/.test(info);\n    case 'vaginal':      return /vaginal/.test(info);\n    case 'rectal':       return /rectal|supositorio/.test(info);\n    case 'oral':\n      // Oral exige vía oral Y excluye explícitamente otras vías\n      return /\\boral\\b|sublingual|bucal/.test(info)\n          && !/cut[aá]neo|oft[aá]lmic|intravenos|nasal|inhalat|vaginal|rectal/.test(info);\n    default: return true;\n  }\n}\n\n// --- 4) Scoring: prioriza comercializados y no revocados ---\nfunction puntuar(med, nombreBuscado) {\n  let s = 0;\n  \n  if (med.comerc === true)  s += 100;\n  if (med.estado?.rev)      s -=  50;\n  if (med.generico === true) s +=   1;\n  \n  if (nombreBuscado) {\n    const buscado = String(nombreBuscado).toLowerCase().trim();\n    const nombreCima = String(med.nombre || \"\").toLowerCase();\n    const primeraPalabra = nombreCima.split(/[\\s,\\d]+/)[0] || \"\";\n    \n    if (primeraPalabra === buscado) {\n      s += 500;\n    } else if (nombreCima.startsWith(buscado + \" \")) {\n      s += 300;\n    } else if (nombreCima.startsWith(buscado)) {\n      s += 100;\n    } else {\n      s -= 200;\n    }\n    \n    if (nombreCima.includes(\"/\")) {\n      s -= 300;\n    }\n    if (nombreCima.includes(\"+\")) {\n      s -= 300;\n    }\n  }\n  \n  return s;\n}\n\n// =============================================================\n// LOOP PRINCIPAL\n// =============================================================\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n\n  // Parse defensivo del payload CIMA\n  let busquedaCima;\n  try {\n    busquedaCima = typeof data.cima_search_data === 'string'\n      ? JSON.parse(data.cima_search_data)\n      : data.cima_search_data;\n  } catch (e) {\n    busquedaCima = null;\n  }\n  const medicamentos = busquedaCima?.resultados || data.resultados || [];\n\n  if (medicamentos.length === 0) {\n    data.nregistro_filtrado    = null;\n    data.debug_med_elegido     = null;\n    data.debug_motivo          = 'sin_resultados_cima';\n    resultados.push({ json: data });\n    continue;\n  }\n\n  // Categorizar pista\n  const pista     = obtenerPista(data);\n  const categoria = categorizarPista(pista);\n\n  // Filtrar por categoría\n  let candidatos = medicamentos;\n  let motivo     = 'sin_pista_se_toma_primero';\n\n  if (categoria) {\n    const filtrados = medicamentos.filter(m => coincideCategoria(m, categoria));\n    if (filtrados.length > 0) {\n      candidatos = filtrados;\n      motivo     = `filtro_${categoria}_ok`;\n    } else {\n      motivo     = `filtro_${categoria}_sin_coincidencias_fallback`;\n      // candidatos queda con todos (fallback)\n    }\n  }\n\n  // Ordenar por scoring (mejor primero)\ncandidatos.sort((a, b) => puntuar(b, data.nombre_limpio_cima) - puntuar(a, data.nombre_limpio_cima));\n  const ganador = candidatos[0];\n\n  // Salida + trazabilidad\n  data.nregistro_filtrado      = ganador.nregistro;\n  data.debug_med_elegido       = ganador.nombre;\n  data.debug_pista             = pista;\n  data.debug_categoria         = categoria;\n  data.debug_motivo            = motivo;\n  data.debug_total_candidatos  = candidatos.length;\n  data.debug_comercializado    = ganador.comerc === true;\n\n  resultados.push({ json: data });\n}\n\nreturn resultados;"
+      },
+      "id": "92ef04cc-876c-4643-9b3f-81f2ed9e578a",
+      "name": "Selector FT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://cima.aemps.es/cima/dochtml/ft/{{ $('Selector FT').item.json.nregistro_filtrado }}/FT_{{ $('Selector FT').item.json.nregistro_filtrado }}.html",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "es-ES,es;q=0.9,en;q=0.8"
+            },
+            {
+              "name": "Referer",
+              "value": "https://cima.aemps.es/cima/publico/home.html"
+            },
+            {
+              "name": "Connection",
+              "value": "keep-alive"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          },
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "1605e134-1f89-4ff7-aa4b-9c639ca65062",
+      "name": "Descargar FT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -640,
+        768
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst eleccionItems = $('Selector FT').all();\nconst resultados = [];\n\nfor (let i = 0; i < items.length; i++) {\n    const htmlFicha = items[i].json.data || items[i].json;\n    const nregistroHTTP = items[i].json.nregistro_filtrado;\n    \n    // Match por nregistro (orden HTTP = orden Elegir Vía si batching=1)\n    const match = eleccionItems.find(it => it.json.nregistro_filtrado === nregistroHTTP);\n    const datosCompletos = match ? match.json : eleccionItems[i]?.json || {};\n    \n    resultados.push({\n        json: {\n            ...datosCompletos,\n            html_crudo: htmlFicha\n        }\n    });\n}\n\nreturn resultados;"
+      },
+      "id": "5c3aff29-ff11-4b1f-a635-a496700c8f73",
+      "name": "Procesado FT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Actúa como Farmacólogo Clínico.\nTu única tarea es leer la historia clínica y la sección 4.5 de interacciones para redactar una nota breve orientada al síntoma del paciente.\n\n--- DATOS ---\nFármaco Evaluado: {{ $json.nombre_normalizado_cima || $json.medicamento_sospechoso }}\nReacción Adversa en Evaluación: {{ $json.pseudo_meddra_pt || 'Desconocido' }}\nHistoria Clínica: {{ $('Preparación Texto').item.json.chatInput }}\n[4.5 Interacciones]: {{ $json.cima_4_5_interacciones }}\n\n--- INSTRUCCIONES ---\n1. Identifica qué otros medicamentos toma el paciente de la Historia Clínica (medicación concomitante).\n2. Comprueba en la sección 4.5 si el Fármaco Evaluado interactúa con alguno de ellos, prestando ESPECIAL ATENCIÓN a si dicha interacción puede causar, potenciar o justificar la \"Reacción Adversa en Evaluación\" que sufre el paciente. CÍÑETE A LA REACCIÓN ADVERSA DADA.\n3. Devuelve ÚNICAMENTE un texto plano de máximo 2 líneas con tu conclusión. NO uses formato JSON. NO uses comillas dobles.\n\nEjemplo si hay interacción relevante: 'Nota: El paciente toma X, que según la sección 4.5 inhibe el metabolismo del fármaco evaluado, pudiendo potenciar el riesgo de la reacción adversa analizada.'\nEjemplo si no la hay: 'Nota: Sin interacciones farmacológicas descritas en la sección 4.5 vinculadas al cuadro clínico.'\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -208,
+        768
+      ],
+      "id": "18d103fc-00f3-4722-a806-87b528149df1",
+      "name": "Agente Interacciones",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un experto en terminología médica MedDRA. Genera sinónimos clínicos para una búsqueda en ficha técnica.\n\n=== TÉRMINOS A EXPANDIR ===\nReacción adversa principal: {{ $('Extracción Secciones').item.json.pseudo_meddra_pt || 'Desconocido' }}\nSíntomas del paciente: {{ Array.isArray($('Extracción Secciones').item.json.sintomas_originales_agrupados) ? $('Extracción Secciones').item.json.sintomas_originales_agrupados.join(', ') : ($('Extracción Secciones').item.json.sintomas_originales_agrupados || 'Desconocido') }}\n\n=== REGLAS DE CANTIDAD (CRÍTICO) ===\n\nPara la REACCIÓN ADVERSA PRINCIPAL: genera entre 4 y 6 sinónimos.\n\nPara los SÍNTOMAS DEL PACIENTE, ajusta la cantidad según cuántos haya:\n- 1 a 3 síntomas → 3 o 4 sinónimos por cada uno\n- 4 a 6 síntomas → 2 sinónimos por cada uno\n- 7 a 10 síntomas → 1 sinónimo por cada uno\n- 11 o más síntomas → 0 o 1 sinónimo; ignora síntomas inespecíficos (malestar, dolor leve)\n\n=== REGLAS DE CALIDAD ===\n1. Sinónimos clínicos, término MedDRA si lo conoces, términos paraguas.\n2. NO incluyas el término original en su propia lista.\n3. Español, minúsculas, expresiones cortas.\n4. Si un síntoma es muy genérico, puedes devolver lista vacía [].\n\n=== EJEMPLOS DE SINÓNIMOS ===\n- 'tos seca' → ['tos', 'tos productiva', 'tos persistente']\n- 'cansancio' → ['fatiga', 'astenia', 'debilidad']\n- 'picor' → ['prurito', 'escozor']\n- 'sarpullido' → ['erupcion cutanea', 'rash', 'exantema']\n- 'dolor articular' → ['artralgia', 'artritis']\n\n=== FORMATO DE SALIDA ===\n\nDevuelve EXCLUSIVAMENTE este JSON. La clave \"sinonimos_sintomas\" es un OBJETO donde cada clave es UN SÍNTOMA ORIGINAL DEL PACIENTE (copiado tal cual te lo he dado) y su valor es la lista de sinónimos de ESE síntoma concreto.\n\nSin texto antes ni después, sin markdown:\n\n{\n  \"sinonimos_ram\": [\"sinonimo1\", \"sinonimo2\", \"sinonimo3\"],\n  \"sinonimos_sintomas\": {\n    \"sintoma_original_1\": [\"sinonimo_a\", \"sinonimo_b\"],\n    \"sintoma_original_2\": [\"sinonimo_a\", \"sinonimo_b\"],\n    \"sintoma_original_3\": [\"sinonimo_a\", \"sinonimo_b\"]\n  }\n}\n\nIMPORTANTE: las claves del objeto \"sinonimos_sintomas\" deben ser EXACTAMENTE los síntomas que te he listado arriba, escritos igual, sin parafrasear.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        48,
+        768
+      ],
+      "id": "47f66c5e-84a0-4669-9d91-0549dd4e5798",
+      "name": "Generador Sinónimos",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import re\nimport html\n\nitems = _input.all()\nresultados = []\n\nfor item in items:\n    datos = dict(item.json)\n    \n    # CRÍTICO: Forzamos la conversión a string nativo de Python para evitar el error JsProxy\n    html_crudo = str(datos.get(\"html_crudo\", \"\"))\n\n    def extraer_y_limpiar(id_seccion, texto_html):\n        texto_html = str(texto_html)\n        patron_cabecera = re.compile(rf'<h[1-6][^>]*id=[\"\\']{id_seccion}[\"\\'][^>]*>.*?</h[1-6]>', re.IGNORECASE)\n        match_cabecera = patron_cabecera.search(texto_html)\n        \n        if not match_cabecera:\n            return \"Sección no encontrada.\"\n            \n        inicio = match_cabecera.end()\n        match_siguiente = re.search(r'<h[1-6][^>]*>', texto_html[inicio:], re.IGNORECASE)\n        \n        if match_siguiente:\n            fin = inicio + match_siguiente.start()\n            contenido = texto_html[inicio:fin]\n        else:\n            contenido = texto_html[inicio:]\n            \n        # Limpiar etiquetas HTML\n        texto_limpio = re.sub(r'<br\\s*/?>', '\\n', contenido, flags=re.IGNORECASE)\n        texto_limpio = re.sub(r'</p>', '\\n\\n', texto_limpio, flags=re.IGNORECASE)\n        texto_limpio = re.sub(r'<li[^>]*>', '\\n• ', texto_limpio, flags=re.IGNORECASE)\n        texto_limpio = re.sub(r'<[^>]*>?', '', texto_limpio)\n        texto_limpio = html.unescape(texto_limpio)\n        texto_limpio = re.sub(r'[ \\t]+', ' ', texto_limpio)\n        texto_limpio = re.sub(r'^ +', '', texto_limpio, flags=re.MULTILINE)\n        texto_limpio = re.sub(r'\\n{3,}', '\\n\\n', texto_limpio)\n        \n        return texto_limpio.strip()\n\n    # Extraer secciones clave\n    datos[\"cima_4_3_contraindicaciones\"] = extraer_y_limpiar(\"4.3\", html_crudo)\n    datos[\"cima_4_4_advertencias\"] = extraer_y_limpiar(\"4.4\", html_crudo)\n    datos[\"cima_4_8_reacciones_adversas\"] = extraer_y_limpiar(\"4.8\", html_crudo)\n    datos[\"cima_4_5_interacciones\"] = extraer_y_limpiar(\"4.5\", html_crudo)\n    \n    # Eliminar el HTML crudo para no saturar el JSON final\n    if \"html_crudo\" in datos:\n        del datos[\"html_crudo\"]\n        \n    resultados.append({\"json\": datos})\n\nreturn resultados"
+      },
+      "id": "cb2bba93-eaf9-4c23-9f10-0d84863098f9",
+      "name": "Extracción Secciones",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $('Agente Verificación').all();\nconst resultados = [];\n\n// 1. Obtenemos el nombre original con seguridad\nconst triggerNode = $('Detector Nuevos Casos').first();\nconst ruta = triggerNode?.json?.path || \"\";\nconst nombreOriginal = ruta ? ruta.split('/').pop().replace(/\\.[^/.]+$/, \"\") : \"Resultado_FV\";\n\n// 2. Recuperamos los outputs crudos\nconst outputIA1 = $('Agente Extracción').first()?.json?.text || \"No disponible\";\nconst outputIA2 = $('Agente Agrupación').first()?.json?.text || \"No disponible\";\n\n// 3. RECUPERAMOS LOS DATOS DE CIMA (Viaje en el tiempo al nodo 3)\nconst cimaItems = $('Extracción Secciones').all();\n\nfor (let i = 0; i < items.length; i++) {\n    const d = items[i].json;\n    // Emparejamos cada ítem con sus datos de CIMA correspondientes\n    const cimaData = cimaItems[i] ? cimaItems[i].json : {};\n\n    resultados.push({\n        json: {\n            \"Medicamento\": cimaData.nombre_normalizado_cima || cimaData.medicamento_sospechoso || \"Desconocido\",\n          \"Medicamento_CIMA_Seleccionado\": cimaData.debug_med_elegido || \"No determinado\",\n            \"RAM_Buscada\": cimaData.pseudo_meddra_pt || \"Desconocido\",\n            \"IA1_Extraccion_Literal\": outputIA1,\n            \"IA2_Agrupacion\": outputIA2,\n            \"CIMA_4.3_Contraindicaciones\": cimaData.cima_4_3_contraindicaciones || \"No disponible en este registro\",\n            \"CIMA_4.4_Advertencias\": cimaData.cima_4_4_advertencias || \"No disponible en este registro\",\n          \"CIMA_4.5_Interacciones\": cimaData.cima_4_5_interacciones || \"No disponible en este registro\",\n            \"CIMA_4.8_Reacciones\": cimaData.cima_4_8_reacciones_adversas || \"No disponible en este registro\",\n            \"nombre_archivo_dinamico\": `${nombreOriginal}_ResultadosIntermedios.csv`\n        }\n    });\n}\n\nreturn resultados;"
+      },
+      "id": "d1dde7f7-19cb-4bda-ba4f-a1638b45943f",
+      "name": "Consolidar Resultados Intermedios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        912
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        752,
+        656
+      ],
+      "id": "548b50f7-7896-4034-a5ee-1ae79373e6e6",
+      "name": "Consolidar Resultados Finales"
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        656
+      ],
+      "id": "0a00d44e-f7a4-4e6f-81cf-a6d9b4893742",
+      "name": "Convertir CSV Final"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/shared/{{ $('Eliminar Duplicados').first().json.nombre_archivo_dinamico ? $('Eliminar Duplicados').first().json.nombre_archivo_dinamico.replace('_Huerfanos', '_Consolidado').replace('_ResultadoFinal', '_Consolidado') : 'Consolidado_FV.csv' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        656
+      ],
+      "id": "9e98ffce-1f2b-445a-893f-71138c677fd5",
+      "name": "Guardar CSV Final"
+    },
+    {
+      "parameters": {
+        "model": "qwen3.6:27b",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        784,
+        -112
+      ],
+      "id": "ebbce275-62c6-4613-95cd-bc954b662a7d",
+      "name": "Ollama Model4",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xHuYe0MDGOs9IpBW",
+          "name": "Local Ollama service"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un farmacéutico experto en el vademécum español (AEMPS).\nTu ÚNICA tarea es normalizar el siguiente nombre de medicamento: \"{{ $json.medicamento_sospechoso }}\"\n\nREGLAS DE NORMALIZACIÓN:\n1. En el campo 'nombre_normalizado_cima', pon SOLO el nombre comercial limpio o el Principio Activo Oficial. Elimina posologías, números o vías (ej. \"Paracetamol 1g iv\" -> \"Paracetamol\", \"Yasmin diario\" -> \"Yasmin\").\n2. Nomenclatura Oficial AEMPS (CRÍTICO): Traduce siempre la jerga clínica, abreviaturas o nombres químicos invertidos a su denominación oficial exacta en español. Por ejemplo: \"dimetilfumarato\" DEBE convertirse en \"fumarato de dimetilo\", \"amoxi-clav\" en \"amoxicilina / acido clavulanico\". Piensa en cómo está registrado oficialmente en el vademécum.\n3. En el campo 'via_administracion_pista', extrae la vía de administración si se menciona en el texto original (ej. colirio, iv, tópica, pomada, oral). Si no se menciona ninguna, pon \"Sistemica\".\n4. Corrige faltas de ortografía clínicas comunes.\n5. Cuando se presenten dos principios comunes, redactalos como en el siguiente ejemplo (ej. piperacilina/tazobactam)\n\nREGLAS DE FORMATO (CRÍTICO):\n- NO actúes como un programa informático.\n- NO incluyas preámbulos ni textos adicionales.\n- Devuelve ÚNICA Y EXCLUSIVAMENTE UN (1) objeto JSON.\n\nSALIDA REQUERIDA:\n{\n  \"medicamento_crudo\": \"{{ $json.medicamento_sospechoso }}\",\n  \"nombre_limpio_cima\": \"Nombre limpio para buscar\",\n  \"via_administracion_pista\": \"Vía detectada o Sistemica\"\n}\nTexto narrativo empleado:\n{{ $('Preparación Texto').item.json.chatInput}}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        784,
+        16
+      ],
+      "id": "19a711b5-dfde-460a-a221-ea9e35caaeb0",
+      "name": "Normalizador Fármaco"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst parseoItems = $('Estructurador de Datos').all();\nconst diccionarioItems = $('Diccionario Clínico').all();\nconst resultados = [];\n\nfor (let i = 0; i < items.length; i++) {\n    const item = items[i];\n    \n    let datosDiccionario = {};\n    let datosClinicos = {};\n    \n    try {\n        datosDiccionario = $('Diccionario Clínico').itemMatching(i)?.json || {};\n    } catch (e) {\n        const idActual = item.json.med_id;\n        if (idActual) {\n            const m = diccionarioItems.find(it => it.json.med_id === idActual);\n            if (m) datosDiccionario = m.json;\n        }\n    }\n    \n    try {\n        datosClinicos = $('Estructurador de Datos').itemMatching(i)?.json || {};\n    } catch (e) {\n        const idActual = datosDiccionario.med_id || item.json.med_id;\n        if (idActual) {\n            const m = parseoItems.find(it => it.json.med_id === idActual);\n            if (m) datosClinicos = m.json;\n        }\n    }\n    \n    resultados.push({\n        json: {\n            ...datosClinicos,\n            ...datosDiccionario,\n            ...item.json\n        },\n        pairedItem: { item: i }\n    });\n}\n\n// Reordenar por medmed_id ascendente para mantener el orden original\nresultados.sort((a, b) => {\n    const idA = a.json.med_id || \"\";\n    const idB = b.json.med_id || \"\";\n    return idA.localeCompare(idB, undefined, { numeric: true });\n});\n\nreturn resultados;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        768
+      ],
+      "id": "d6d7e929-463f-40bc-90bb-c82ee3133c64",
+      "name": "Estructurador FT"
+    },
+    {
+      "parameters": {
+        "jsCode": "function safeAll(nodeName) {\n    try { return $(nodeName).all(); } catch (e) { return []; }\n}\n\nconst triggerNode = $('Detector Nuevos Casos').first();\nconst ruta = triggerNode?.json?.path || \"\";\nconst nombreOriginal = ruta \n    ? ruta.split('/').pop().replace(/\\.[^/.]+$/, \"\") \n    : \"Resultado_FV\";\n\nconst diccionarioItems = safeAll('Diccionario Clínico');\nconst parseoItems      = safeAll('Estructurador de Datos');\n\nconst resultados = [];\n\nfor (let i = 0; i < diccionarioItems.length; i++) {\n    const datosDiccionario = diccionarioItems[i]?.json || {};\n    const datosOriginales  = parseoItems[i]?.json || {};\n\n    // _id: del Diccionario o del Parseo, con fallback al índice\n    const idActual = datosDiccionario.med_id \n        || datosOriginales.med_id \n        || `med_${i}`;\n\n    resultados.push({\n        json: {\n            \"Medicamento\": datosDiccionario.nombre_limpio_cima \n                || datosOriginales.medicamento_sospechoso \n                || \"Desconocido\",\n            \"RAM_Reportada\": datosOriginales.pseudo_meddra_pt || \"Desconocido\",\n            \"Sintomas_Paciente\": Array.isArray(datosOriginales.sintomas_originales_agrupados)\n                ? datosOriginales.sintomas_originales_agrupados.join(', ')\n                : (datosOriginales.sintomas_originales_agrupados || \"Desconocido\"),\n            \"Fecha_Inicio\": datosOriginales.fecha_inicio_cuadro || \"Desconocido\",\n            \"Fecha_Fin\": datosOriginales.fecha_fin_cuadro || \"Desconocido\",\n            \"Mejora_Retirada\": datosOriginales.mejora_tras_retirada || \"Desconocido\",\n            \"En_Ficha_Tecnica\": \"No se encontró ficha técnica\",\n            \"Observaciones_Clinicas\": \"Medicamento no encontrado en CIMA\",\n            \"med_id\": idActual,\n            \"nombre_archivo_dinamico\": `${nombreOriginal}_Huerfanos.csv`\n        }\n    });\n}\n\nreturn resultados;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        592
+      ],
+      "id": "1e6d65ae-703d-4dc5-b077-97d1f477c977",
+      "name": "Estructurador Medicamentos Sin FT"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst resultados = [];\n\nconst triggerNode = $('Detector Nuevos Casos').first();\nconst ruta = triggerNode?.json?.path || \"\";\nconst nombreOriginal = ruta ? ruta.split('/').pop().replace(/\\.[^/.]+$/, \"\") : \"Resultado_FV\";\n\nconst cimaItems = $('Extracción Secciones').all();\nconst interaccionesItems = $('Agente Interacciones').all();\n\nfor (let i = 0; i < items.length; i++) {\n    const item = items[i].json;\n\n    // Datos clínicos: del nodo de Limpieza, no del árbitro\n    const cimaData = cimaItems[i]?.json || {};\n    const notaInteracciones = interaccionesItems[i]?.json?.text || \"\";\n    const notaLimpia = notaInteracciones ? notaInteracciones.replace(/\\n/g, \" \").trim() : \"\";\n\n    // Datos del medicamento y RAM SIEMPRE desde Limpieza\n    const medicamento = cimaData.nombre_normalizado_cima \n        || cimaData.medicamento_sospechoso \n        || \"Desconocido\";\n    const ramReportada = cimaData.pseudo_meddra_pt || \"Desconocido\";\n    const sintomas = Array.isArray(cimaData.sintomas_originales_agrupados)\n        ? cimaData.sintomas_originales_agrupados.join(', ')\n        : (cimaData.sintomas_originales_agrupados || \"Desconocido\");\n    const fechaInicio = cimaData.fecha_inicio_cuadro || \"Desconocido\";\n    const fechaFin = cimaData.fecha_fin_cuadro || \"Desconocido\";\n    const mejoraRetirada = cimaData.mejora_tras_retirada || \"Desconocido\";\n    const idActual = cimaData.med_id || `med_${i}`;\n\n    try {\n        let dataArray;\n\n        // Caso A: el item ya viene parseado al primer nivel (output parser activo en el agente)\n        if (item.medicamento_evaluado || item.RAM_en_ficha_tecnica) {\n            dataArray = [item];\n        } else {\n            // Caso B: el item trae el JSON como string en 'output' o 'text' — hay que parsearlo\n            let textoCrudo = item.output || item.text || \"\";\n            textoCrudo = textoCrudo.replace(new RegExp('`{3}json', 'gi'), '').replace(new RegExp('`{3}', 'g'), '').trim();\n            textoCrudo = textoCrudo.replace(/:\\s*'((?:[^'\\\\]|\\\\.)*)'(\\s*[,\\n}\\]])/g, ': \"$1\"$2');\n\n            const idxArray = textoCrudo.indexOf('[');\n            const idxObjeto = textoCrudo.indexOf('{');\n\n            if (idxArray !== -1 && (idxObjeto === -1 || idxArray < idxObjeto)) {\n                const fin = textoCrudo.lastIndexOf(']');\n                if (fin === -1) throw new Error(\"Array JSON incompleto en la respuesta de la IA\");\n                dataArray = JSON.parse(textoCrudo.substring(idxArray, fin + 1));\n            } else if (idxObjeto !== -1) {\n                const fin = textoCrudo.lastIndexOf('}');\n                if (fin === -1) throw new Error(\"Objeto JSON incompleto en la respuesta de la IA\");\n                dataArray = [JSON.parse(textoCrudo.substring(idxObjeto, fin + 1))];\n            } else {\n                throw new Error(\"No hay JSON válido en la respuesta de la IA\");\n            }\n        }\n\n        for (const entry of dataArray) {\n            // SOLO del árbitro: veredicto de ficha técnica y observaciones\n            const enFicha = entry.RAM_en_ficha_tecnica || \"No determinado\";\n            const observacionesBase = entry.observaciones_clinicas || \"Sin observaciones\";\n            const observacionesFinales = notaLimpia\n                ? `${observacionesBase} | ${notaLimpia}`\n                : observacionesBase;\n\n            resultados.push({\n                json: {\n                    \"Medicamento\": medicamento,\n                    \"RAM_Reportada\": ramReportada,\n                    \"Sintomas_Paciente\": sintomas,\n                    \"Fecha_Inicio\": fechaInicio,\n                    \"Fecha_Fin\": fechaFin,\n                    \"Mejora_Retirada\": mejoraRetirada,\n                    \"En_Ficha_Tecnica\": enFicha,\n                    \"Observaciones_Clinicas\": observacionesFinales,\n                    \"med_id\": idActual,\n                    \"nombre_archivo_dinamico\": `${nombreOriginal}_ResultadoFinal.csv`\n                },\n                pairedItem: { item: i }\n            });\n        }\n    } catch (e) {\n        const observacionesCatch = notaLimpia\n            ? `Sin observaciones (fallo de parseo) | ${notaLimpia}`\n            : \"Sin observaciones (fallo de parseo)\";\n\n        resultados.push({\n            json: {\n                error: \"Error en formato final\",\n                detalle: e.message,\n                \"Medicamento\": medicamento,\n                \"RAM_Reportada\": ramReportada,\n                \"Sintomas_Paciente\": sintomas,\n                \"Fecha_Inicio\": fechaInicio,\n                \"Fecha_Fin\": fechaFin,\n                \"Mejora_Retirada\": mejoraRetirada,\n                \"En_Ficha_Tecnica\": \"No determinado\",\n                \"Observaciones_Clinicas\": observacionesCatch,\n                \"med_id\": idActual,\n                \"nombre_archivo_dinamico\": `${nombreOriginal}_ResultadoFinal.csv`\n            },\n            pairedItem: { item: i }\n        });\n    }\n}\n\n// Ordenar por med_id ascendente para mantener el orden canónico\nresultados.sort((a, b) => {\n    const idA = String(a.json.med_id || \"\");\n    const idB = String(b.json.med_id || \"\");\n    return idA.localeCompare(idB, undefined, { numeric: true });\n});\n\nreturn resultados;"
+      },
+      "id": "521d992a-ba33-43ee-bcd0-ea7349b66c07",
+      "name": "Estructurador Datos Finales",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un Farmacólogo Clínico experto en farmacovigilancia. Tu tarea es UNA SOLA: determinar si una reacción adversa concreta está recogida en la ficha técnica de un medicamento.\n\n=== DATOS DEL CASO ===\nMedicamento: {{ $('Extracción Secciones').item.json.medicamento_sospechoso || 'Desconocido' }}\nReacción adversa a localizar: {{ $('Extracción Secciones').item.json.pseudo_meddra_pt || 'Desconocido' }}\nSíntomas descritos por el paciente: {{ Array.isArray($('Extracción Secciones').item.json.sintomas_originales_agrupados) ? $('Extracción Secciones').item.json.sintomas_originales_agrupados.join(', ') : ($('Extracción Secciones').item.json.sintomas_originales_agrupados || 'Desconocido') }}\nMejora tras retirada del medicamento: {{ $('Extracción Secciones').item.json.mejora_tras_retirada || 'Desconocido' }}\n\n=== FICHA TÉCNICA OFICIAL ===\n\n--- SECCIÓN 4.8 (Reacciones Adversas) ---\n{{ $('Extracción Secciones').item.json.cima_4_8_reacciones_adversas }}\n\n--- SECCIÓN 4.4 (Advertencias y precauciones) ---\n{{ $('Extracción Secciones').item.json.cima_4_4_advertencias }}\n\n--- SECCIÓN 4.3 (Contraindicaciones) ---\n{{ $('Extracción Secciones').item.json.cima_4_3_contraindicaciones }}\n\n=== METODOLOGÍA DE BÚSQUEDA (OBLIGATORIA) ===\n\nPASO 1 - Búsqueda literal: Busca el término exacto de la reacción adversa en las secciones 4.8, 4.4 y 4.3.\n\nPASO 2 - Búsqueda por sinónimos médicos pre-calculados.\n\nSinónimos de la reacción adversa principal a buscar también en la ficha:\n{{ $json.sinonimos_ram }}\n\nMapa de síntomas del paciente → términos a buscar en la ficha:\n{{ $json.sinonimos_sintomas }}\n\nPara cada síntoma listado arriba, busca tanto el término original como cada uno de sus sinónimos. Si encuentras cualquiera de ellos (literal o como parte de un término más amplio), ese síntoma cuenta como localizado.\n\nPASO 3 - Búsqueda por término paraguas: Si el síntoma es una manifestación específica de una categoría más amplia mencionada en la ficha, cuéntalo como encontrado (ej: 'picor en brazos' está cubierto por 'prurito').\n\nPASO 4 - Notas al pie de la sección 4.8: las tablas de RAMs incluyen notas (a, b, c...) que listan términos agrupados. Revísalas: muchos síntomas concretos están dentro de un término general.\n\n=== ANTES DE RESPONDER ===\nRevisa OBLIGATORIAMENTE las tres secciones (4.8, 4.4, 4.3) antes de concluir 'No'.\nChecklist mental: ¿4.8? ¿4.4? ¿4.3?\n\n=== REGLA DE DECISIÓN ===\n- Si aparece en 4.8 (literal, sinónimo o término paraguas) → 'Sí (4.8)'\n- Si aparece en 4.4 → 'Sí (4.4)'\n- Si aparece en 4.3 → 'Sí (4.3)'\n- Si solo aparece como término genérico que engloba el síntoma → 'Sí (Término general)'\n- Si tras búsqueda exhaustiva no aparece de ninguna forma → 'No'\n- Si los datos son insuficientes → 'Desconocido'\n\n=== FORMATO DE SALIDA ===\n\nDevuelve EXCLUSIVAMENTE un array JSON válido con un único objeto, sin texto antes ni después, sin markdown, sin backticks.\n\nReglas de sintaxis JSON:\n- Las claves y valores van entre comillas dobles (\").\n- DENTRO del contenido de los valores, usa comillas simples (') para citar términos de la ficha. Nunca comillas dobles dentro del texto.\n\n[\n  {\n    \"medicamento_evaluado\": \"{{ $('Extracción Secciones').item.json.medicamento_sospechoso || 'Desconocido' }}\",\n    \"reaccion_adversa_obligatoria\": \"{{ $('Extracción Secciones').item.json.pseudo_meddra_pt || 'Desconocido' }}\",\n    \"sintomas_paciente\": \"{{ Array.isArray($('Extracción Secciones').item.json.sintomas_originales_agrupados) ? $('Extracción Secciones').item.json.sintomas_originales_agrupados.join(', ') : ($('Extracción Secciones').item.json.sintomas_originales_agrupados || 'Desconocido') }}\",\n    \"RAM_en_ficha_tecnica\": \"<una de: Sí (4.8) | Sí (4.4) | Sí (4.3) | Sí (Término general) | No | Desconocido>\",\n    \"observaciones_clinicas\": \"<2-3 frases. Cita entre comillas simples el término exacto localizado en la ficha (o indica que no se encontró). Menciona la mejora tras la retirada del medicamento ({{ $('Extracción Secciones').item.json.mejora_tras_retirada || 'Desconocido' }}) como dato de imputabilidad>\"\n  }\n]",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        304,
+        768
+      ],
+      "id": "acf13028-4126-4599-aaca-8dba42ab2132",
+      "name": "Agente Verificación"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b-instruct-q5_K_M",
+        "options": {
+          "numCtx": 32768,
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        304,
+        928
+      ],
+      "id": "86119ef5-2433-42da-8f8a-3a3d70e7c53d",
+      "name": "Ollama Model5",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xHuYe0MDGOs9IpBW",
+          "name": "Local Ollama service"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Ollama Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Extracción",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Interacciones",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Agrupación",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eliminar Duplicados": {
+      "main": [
+        [
+          {
+            "node": "Convertir CSV Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generador Sinónimos",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Extracción": {
+      "main": [
+        [
+          {
+            "node": "Agente Agrupación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Agrupación": {
+      "main": [
+        [
+          {
+            "node": "Estructurador de Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diccionario Clínico": {
+      "main": [
+        [
+          {
+            "node": "Búsqueda en CIMA por Nombre Comercial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversión a CSV Intermedios": {
+      "main": [
+        [
+          {
+            "node": "Guardar CSV Intermedios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detector Nuevos Casos": {
+      "main": [
+        [
+          {
+            "node": "Cargar Caso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cargar Caso": {
+      "main": [
+        [
+          {
+            "node": "Extractor Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extractor Texto": {
+      "main": [
+        [
+          {
+            "node": "Preparación Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparación Texto": {
+      "main": [
+        [
+          {
+            "node": "Agente Extracción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estructurador de Datos": {
+      "main": [
+        [
+          {
+            "node": "Normalizador Fármaco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estructurador Datos Medicamentos": {
+      "main": [
+        [
+          {
+            "node": "Diccionario Clínico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Búsqueda en CIMA por Nombre Comercial": {
+      "main": [
+        [
+          {
+            "node": "¿Encontrado en CIMA? (búsqueda 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Encontrado en CIMA? (búsqueda 1)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Búsqueda CIMA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Búsqueda en CIMA por Principio Activo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Encontrado en CIMA? (búsqueda 2)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Búsqueda CIMA",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Búsqueda en CIMA por Nombre Comercial 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Encontrado en CIMA? (búsqueda 3)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Búsqueda CIMA",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Estructurador Medicamentos Sin FT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Búsqueda en CIMA por Principio Activo": {
+      "main": [
+        [
+          {
+            "node": "¿Encontrado en CIMA? (búsqueda 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Búsqueda en CIMA por Nombre Comercial 2": {
+      "main": [
+        [
+          {
+            "node": "¿Encontrado en CIMA? (búsqueda 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar Búsqueda CIMA": {
+      "main": [
+        [
+          {
+            "node": "Estructurador FT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Selector FT": {
+      "main": [
+        [
+          {
+            "node": "Descargar FT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar FT": {
+      "main": [
+        [
+          {
+            "node": "Procesado FT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Procesado FT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesado FT": {
+      "main": [
+        [
+          {
+            "node": "Extracción Secciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Interacciones": {
+      "main": [
+        [
+          {
+            "node": "Generador Sinónimos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generador Sinónimos": {
+      "main": [
+        [
+          {
+            "node": "Agente Verificación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extracción Secciones": {
+      "main": [
+        [
+          {
+            "node": "Agente Interacciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar Resultados Intermedios": {
+      "main": [
+        [
+          {
+            "node": "Conversión a CSV Intermedios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar Resultados Finales": {
+      "main": [
+        [
+          {
+            "node": "Eliminar Duplicados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir CSV Final": {
+      "main": [
+        [
+          {
+            "node": "Guardar CSV Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Normalizador Fármaco",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizador Fármaco": {
+      "main": [
+        [
+          {
+            "node": "Estructurador Datos Medicamentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estructurador FT": {
+      "main": [
+        [
+          {
+            "node": "Selector FT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estructurador Medicamentos Sin FT": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Resultados Finales",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Estructurador Datos Finales": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Resultados Intermedios",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Consolidar Resultados Finales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Verificación": {
+      "main": [
+        [
+          {
+            "node": "Estructurador Datos Finales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Verificación",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  }
+}
+
