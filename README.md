@@ -110,3 +110,17 @@ A continuación se da una breve descripción de las diferentes fases del proceso
 7. **Agentes finales**: Con toda la información necesaria, en primer lugar el Agente Interacciones redacta una nota orientada a posibles interacciones con otros medicamentos, empleando de nuevo el caso narrativo inicial para encontrar la medicación concomitante. Tras esto, el Generador Sinónimos genera sinónimos clínicos de la RAM y de los síntomas, que el Agente Verificación emplea para comprobar si la reacción adversa está recogida en la ficha técnica. Para ello recurre a esos sinónimos y a los apartados 4.3, 4.4 y 4.8, indicando dónde se encuentra y mostrando una breve observación al respecto.
 
 8. **Consolidación y salida**: Mediante diferentes bloques de JavaScript, los resultados se consolidan, eliminando los duplicados mediante `med_id`, formateándose el archivo de salida que se exporta como CSV en `/data/shared/`. Durante el proceso se generan también CSV intermedios para trazabilidad.
+
+# Información de contacto
+
+Este algoritmo ha sido desarrollado por Antonio Albarrán Carlier como parte del proyecto "Identificación de Reacciones Adversas a Medicamentos sobre Historias Clínicas mediante uso de Inteligencia Artificial: Prueba de Concepto (POC)" del Hospital Universitari Vall d'Hebron.
+
+Información de contacto:\
+
+-**antonio.albarran.carlier@gmail.com**\
+-**antonio.albarran@vhir.org**\
+
+# Bibliografía
+
+-Agencia Española de Medicamentos y Productos Sanitarios. (s. f.). CIMA REST API (versión 1.19) [Documento técnico]. Recuperado el 23 de mayo de 2026, de https://sede.aemps.gob.es/docs/CIMA-REST-API_1_19.pdf \
+-Eraña-Díaz, M. L., Rosales-Lagarde, A., Arango-de-Montis, I., & Velázquez-Monzón, J. A. (2026). Generative AI-Assisted automation of clinical data processing: A methodological framework for streamlining behavioral research workflows. Informatics, 13(4), 48. https://doi.org/10.3390/informatics13040048 \
