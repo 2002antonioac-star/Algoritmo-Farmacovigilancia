@@ -8,7 +8,7 @@ A continuación se aborda el algoritmo desarrollado para la extracción y verifi
 El algoritmo de inteligencia artificial está basado en las tres siguientes herramientas instaladas en un mismo equipo:\
 -**Docker (v29.3.51)**: Este actúa como soporte de contenedores.\
 -**n8n (v1.1222.5)**: Se instaló sobre una instancia de Docker, actuando como la plataforma base sobre la que se ejecuta el algoritmo.\
--**Ollama (v0.30.7)**: Este se instaló directamente sobre el dispositivo, fuera de la instancia de Docker. Este actúa como servidor local para la ejecución de modelos de lenguaje.\
+-**Ollama (v0.30.7)**: Este se instaló directamente sobre el dispositivo, fuera de la instancia de Docker. Este actúa como servidor local para la ejecución de modelos de lenguaje.
 
 Además de estas herramientas que requieren instalación, se empleó la API CIMA REST, accedida mediante consultas HTTP.
 
@@ -87,7 +87,7 @@ Para poder emplear el siguiente código, se debe ejecutar el código JSON sobre 
 -Tener Docker en ejecución, ya sea desde la aplicación de escritorio o mediante terminal, y levantar el contenedor de n8n.\
 -Tener Ollama instalado en el equipo con ambos modelos y configurar en n8n la credencial 'Ollama API', que se ha de crear previamente desde la aplicación de escritorio de Ollama.\
 -Crear un nuevo flujo de n8n y pegar el código JSON.\
--Cambiar la ruta de la carpeta vigilada en el nodo de detección inicial y los dos nodos de exportación a CSV por la carpeta compartida del contenedor de n8n (parámetro path, con valor actual `/data/shared/`)\
+-Cambiar la ruta de la carpeta vigilada en el nodo de detección inicial y los dos nodos de exportación a CSV por la carpeta compartida del contenedor de n8n (parámetro path, con valor actual `/data/shared/`).
 
 Si solo se desea observar el flujo general, con instalar n8n es suficiente para visualizar la mayoría del código. 
 
@@ -115,12 +115,12 @@ A continuación se da una breve descripción de las diferentes fases del proceso
 
 Este algoritmo ha sido desarrollado por Antonio Albarrán Carlier como parte del proyecto "Identificación de Reacciones Adversas a Medicamentos sobre Historias Clínicas mediante uso de Inteligencia Artificial: Prueba de Concepto (POC)" del Hospital Universitari Vall d'Hebron.
 
-Información de contacto:\
+Información de contacto:
 
 -**antonio.albarran.carlier@gmail.com**\
--**antonio.albarran@vhir.org**\
+-**antonio.albarran@vhir.org**
 
 # Bibliografía
 
 -Agencia Española de Medicamentos y Productos Sanitarios. (s. f.). CIMA REST API (versión 1.19) [Documento técnico]. Recuperado el 23 de mayo de 2026, de https://sede.aemps.gob.es/docs/CIMA-REST-API_1_19.pdf \
--Eraña-Díaz, M. L., Rosales-Lagarde, A., Arango-de-Montis, I., & Velázquez-Monzón, J. A. (2026). Generative AI-Assisted automation of clinical data processing: A methodological framework for streamlining behavioral research workflows. Informatics, 13(4), 48. https://doi.org/10.3390/informatics13040048 \
+-Eraña-Díaz, M. L., Rosales-Lagarde, A., Arango-de-Montis, I., & Velázquez-Monzón, J. A. (2026). Generative AI-Assisted automation of clinical data processing: A methodological framework for streamlining behavioral research workflows. Informatics, 13(4), 48. https://doi.org/10.3390/informatics13040048 
