@@ -60,7 +60,7 @@ Es un modelo que fue subido al repositorio de Ollama en septiembre de 2024, cont
 Para importar este modelo en un Ollama local, se ha de ejecutar el siguiente comando en el terminal del sistema:
 
 ```
-ollama run qwen2.5:14b-instruct-q5_K_M
+ollama run qwen2.5:14b-instruct-q5_K_M 
 ```
 Las especificaciones del modelo se pueden encontrar en su directorio del repositorio de Ollama:
 https://ollama.com/library/qwen2.5:14b-instruct-q5_K_M
