@@ -117,10 +117,10 @@ Este algoritmo ha sido desarrollado por Antonio Albarrán Carlier como parte del
 
 Información de contacto:
 
--**antonio.albarran.carlier@gmail.com**\
--**antonio.albarran@vhir.org**
+- **antonio.albarran.carlier@gmail.com**\
+- **antonio.albarran@vhir.org**
 
 # Bibliografía
 
--Agencia Española de Medicamentos y Productos Sanitarios. (s. f.). CIMA REST API (versión 1.19) [Documento técnico]. Recuperado el 23 de mayo de 2026, de https://sede.aemps.gob.es/docs/CIMA-REST-API_1_19.pdf \
--Eraña-Díaz, M. L., Rosales-Lagarde, A., Arango-de-Montis, I., & Velázquez-Monzón, J. A. (2026). Generative AI-Assisted automation of clinical data processing: A methodological framework for streamlining behavioral research workflows. Informatics, 13(4), 48. https://doi.org/10.3390/informatics13040048 
+- Agencia Española de Medicamentos y Productos Sanitarios. (s. f.). *CIMA REST API (versión 1.19)* [Documento técnico]. Recuperado el 23 de mayo de 2026, de https://sede.aemps.gob.es/docs/CIMA-REST-API_1_19.pdf \
+- Eraña-Díaz, M. L., Rosales-Lagarde, A., Arango-de-Montis, I., & Velázquez-Monzón, J. A. (2026). Generative AI-Assisted automation of clinical data processing: A methodological framework for streamlining behavioral research workflows. *Informatics, 13*(4), 48. https://doi.org/10.3390/informatics13040048 
